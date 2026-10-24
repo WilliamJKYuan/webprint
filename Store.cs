@@ -29,6 +29,15 @@ class Store(string root) {
             """); cmd.ExecuteNonQuery();
     }
     public bool HasUsers() { using var c = Open(); using var q = Cmd(c, "SELECT count(*) FROM users"); return (long)q.ExecuteScalar()! > 0; }
+    public string? OfficeConverter() { using var c = Open(); using var q = Cmd(c, "SELECT value FROM settings WHERE name='office_converter'"); return q.ExecuteScalar() as string; }
+    public void SetOfficeConverter(string provider, string actor, string? ip) {
+        if (provider is not ("libreoffice" or "microsoft-office")) throw new AppError("请选择 LibreOffice 或 Microsoft Office。");
+        using var c = Open(); using var tx = c.BeginTransaction();
+        using var q = Cmd(c, "INSERT INTO settings(name,value) VALUES('office_converter',$0) ON CONFLICT(name) DO UPDATE SET value=$0", provider);
+        q.Transaction = tx; q.ExecuteNonQuery();
+        WriteEvent(c, tx, actor, null, "converter_changed", provider == "libreoffice" ? "文档转换改用 LibreOffice" : "文档转换改用 Microsoft Office", ip);
+        tx.Commit();
+    }
     public void CreateUser(string name, string password, string role) {
         if (!Regex.IsMatch(name ?? "", "^[a-zA-Z0-9_.-]{3,40}$") || role is not ("admin" or "user")) throw new AppError("用户名须为 3～40 位字母、数字或 _.-，角色须有效。");
         CheckPassword(password); var salt = RandomNumberGenerator.GetBytes(32); var hash = Hash(password, salt);

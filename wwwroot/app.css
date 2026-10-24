@@ -186,6 +186,8 @@ td small { display: block; font-size: 13px; color: var(--muted); margin-top: 4px
 .settings-description > p { margin: 10px 0 18px; max-width: 34em; font-size: 14px; color: var(--muted); }
 .settings-panel { padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); min-width: 0; }
 .diagnostics { display: grid; gap: 0; }
+.converter-components { margin-top: 20px; }
+#converter-form > label:first-child { margin-top: 0; }
 .diagnostics > span { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
 .diagnostics > span:first-child { padding-top: 0; }
 .diagnostics > span:last-of-type { border-bottom: 0; }

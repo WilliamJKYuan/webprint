@@ -60,9 +60,12 @@ data/                     账户、文件和审计（使用后生成）
 - `sumatra: true`：已带便携版 PDF 打印程序，移动目录不需要改路径。
 - `libreOffice: true`：已带独立转换组件，可在新电脑转换 Word/Excel。
 - 如果组件未随包附带，可在目标电脑安装 LibreOffice、SumatraPDF，留空程序路径时自动检测常规安装目录；也可在配置中填写安装位置。
+- 也可安装桌面版 Microsoft Word / Excel，在网页“系统管理 → Word / Excel 转换”选择 Microsoft Office 并保存。需在运行程序的 Windows 用户下打开 Office，完成激活和首次设置，并保持该用户登录。网页版 Office 不提供此本机转换接口。
 - 手动指定路径时支持相对于程序目录的路径，推荐 `tools/LibreOffice/program/soffice.exe` 和 `tools/SumatraPDF/SumatraPDF.exe`，避免写死旧电脑盘符。
 
 Office 文件分页依赖目标电脑的字体。迁移后应安装需要的中文字体并重新检查预览。打印能力取决于新电脑驱动；设备级自动出纸计数尚未实现，当前实际数量通过管理员人工核查记录。
+
+转换软件选择保存在 `data/webprint.db`，迁移数据后仍会使用原来的选择；它不会随主机变化自动重置。请在新电脑安装相应软件，或在网页重新选择。新包默认选择 LibreOffice；已有数据库中的网页设置优先于 `Printing.OfficeConverter`。切换后不重新生成旧预览，也不自动回退到另一种软件。Microsoft Office 不随便携包分发。
 
 ## 从源代码制作发布包
 

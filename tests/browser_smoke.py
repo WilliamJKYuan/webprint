@@ -57,6 +57,18 @@ try:
         page.screenshot(path=str(TEST / 'audit-desktop.png'), full_page=True)
         page.locator('[data-tab=admin]').click()
         page.locator('#diagnostics span').first.wait_for()
+        expect(page.locator('#office-converter')).to_be_enabled()
+        page.locator('#office-converter').select_option('microsoft-office')
+        expect(page.locator('#converter-note')).to_be_visible()
+        page.locator('#converter-save').click()
+        expect(page.locator('#converter-save')).to_be_enabled()
+        expect(page.locator('#converter-status')).to_contain_text('保存')
+        assert page.evaluate("async () => (await (await fetch('/api/conversion')).json()).provider") == 'microsoft-office'
+        page.locator('#office-converter').select_option('libreoffice')
+        page.locator('#converter-save').click()
+        expect(page.locator('#converter-save')).to_be_enabled()
+        expect(page.locator('#converter-status')).to_contain_text('保存')
+        assert page.evaluate("async () => (await (await fetch('/api/conversion')).json()).provider") == 'libreoffice'
         page.screenshot(path=str(TEST / 'admin-desktop.png'), full_page=True)
         # 创建账户并核对日志面板。
         page.locator('#user-form [name=username]').fill('browseruser')

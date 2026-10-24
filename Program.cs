@@ -11,6 +11,7 @@ using WebPrint.Infrastructure;
 // A hidden child process has no console code page; match the desktop log reader explicitly.
 Console.OutputEncoding = new System.Text.UTF8Encoding(false);
 RuntimeLayout.Initialize();
+if (args.Length > 0 && args[0] == "--office-convert") { Environment.ExitCode = MicrosoftOfficeWorker.Run(args.Skip(1).ToArray()); return; }
 if (args.Contains("--self-test")) { await SelfTests.Run(); return; }
 // Published builds resolve config, static files and relative paths beside the executable.
 var appRoot = Directory.Exists(Path.Combine(RuntimeLayout.AppRoot, "wwwroot"))
@@ -100,6 +101,10 @@ api.MapPost("/password", (PasswordInput i, HttpContext c) => {
     adminPasswordDisplay.ChangePassword(User(c), i.Password); db.Event(User(c), null, "password_changed", "修改密码"); return Results.Ok();
 });
 api.MapGet("/system", async (HttpContext c, PrintEngine engine) => { RequireAdmin(c); return await engine.Diagnostics(); });
+api.MapGet("/conversion", (HttpContext c, PrintEngine engine) => { RequireAdmin(c); return engine.ConversionStatus(); });
+api.MapPost("/conversion", (ConverterInput i, HttpContext c, PrintEngine engine) => {
+    RequireAdmin(c); db.SetOfficeConverter(i.Provider, User(c), c.Connection.RemoteIpAddress?.ToString()); return engine.ConversionStatus();
+});
 api.MapGet("/printers", async (HttpContext c, PrintEngine engine) => { var p = await engine.Printers(); return Admin(c) ? p : p.Where(x => x.Enabled); });
 api.MapPost("/printers", async (PrinterInput i, HttpContext c, PrintEngine engine) => {
     RequireAdmin(c); if (!(await engine.Printers()).Any(x => x.Name == i.Name)) throw new AppError("打印机未安装或不可访问。");
@@ -150,6 +155,7 @@ record LoginInput(string Username, string Password);
 record PasswordInput(string Current, string Password);
 record NewUserInput(string Username, string Password, string Role);
 record PrinterInput(string Name, bool Enabled);
+record ConverterInput(string Provider);
 record ReviewInput(int? ActualPages, string Note);
 record JobInput(string DocumentId, string Printer, string Pages, int Copies, string Duplex, bool Color, string RequestId);
 class AppError(string message, int status = 400) : Exception(message) { public int Status { get; } = status; }

@@ -2,7 +2,7 @@
 const $ = s => document.querySelector(s);
 const state = { me: null, doc: null, printers: [], jobs: [], requestId: null, reviewId: null, uploading: false, submitting: false };
 const statuses = { queued: '等待打印', dispatching: '正在发送', submitted_unverified: '已发送，待确认', unknown: '结果待确认', failed: '发送失败', cancelled: '已取消', reviewed: '已核对' };
-const eventNames = { login: '登录', password_changed: '修改密码', printer_changed: '修改打印机共享', user_created: '创建账户', upload: '上传文件', printing_changed: '切换实机打印', machine_changed: '部署或迁移服务', content_purged: '清理到期文件', ...statuses };
+const eventNames = { login: '登录', password_changed: '修改密码', printer_changed: '修改打印机共享', user_created: '创建账户', upload: '上传文件', printing_changed: '切换实机打印', converter_changed: '切换文档转换软件', machine_changed: '部署或迁移服务', content_purged: '清理到期文件', ...statuses };
 let toastTimer;
 function toast(message, error = false) { clearTimeout(toastTimer); $('#toast').textContent = message; $('#toast').className = error ? 'error' : ''; $('#toast').hidden = false; toastTimer = setTimeout(() => $('#toast').hidden = true, 6000); }
 async function api(path, method = 'GET', body) {
@@ -143,14 +143,45 @@ function renderJobs() {
 }
 for (const s of ['#search', '#status-filter', '#date-from', '#date-to']) $(s).addEventListener('input', renderJobs);
 $('#refresh-jobs').addEventListener('click', () => loadJobs().catch(e => toast(e.message, true)));
+let converterSaving = false;
+const converterName = provider => provider === 'microsoft-office' ? 'Microsoft Office' : 'LibreOffice';
+function showConversion(info) {
+  if (converterSaving) return;
+  $('#office-converter').value = info.provider;
+  $('#office-converter').disabled = false; $('#converter-save').disabled = false;
+  $('#converter-note').hidden = info.provider !== 'microsoft-office';
+  $('#converter-status').textContent = `当前使用 ${converterName(info.provider)}。`;
+  const components = $('#converter-components'); components.replaceChildren();
+  for (const [name, found] of [['LibreOffice', info.libreOffice], ['Microsoft Word', info.microsoftWord], ['Microsoft Excel', info.microsoftExcel]])
+    components.append(text('span', `${found ? '●' : '○'} ${name}：${found ? '已检测到' : '没找到'}`, found ? 'good' : 'bad'));
+}
+$('#office-converter').addEventListener('change', () => {
+  $('#converter-note').hidden = $('#office-converter').value !== 'microsoft-office';
+  $('#converter-status').textContent = '选好后点击“保存选择”，新上传的 Word / Excel 就会使用它。';
+});
+$('#converter-form').addEventListener('submit', async e => {
+  e.preventDefault(); if (converterSaving) return;
+  converterSaving = true; $('#converter-form').setAttribute('aria-busy', 'true');
+  $('#converter-save').disabled = true; $('#office-converter').disabled = true;
+  $('#converter-status').textContent = '正在保存…';
+  try {
+    const info = await api('/conversion', 'POST', { provider: $('#office-converter').value });
+    converterSaving = false; showConversion(info);
+    const ready = info.provider === 'microsoft-office' ? info.microsoftWord && info.microsoftExcel : info.libreOffice;
+    $('#converter-status').textContent = ready ? `已保存，新上传的 Word / Excel 会使用 ${converterName(info.provider)}。` : '选择已保存，但有转换软件没找到。请先在服务电脑安装，已有的 PDF 和图片仍可正常使用。';
+    toast('文档转换设置已保存。');
+  } catch (err) { $('#converter-status').textContent = err.message; toast(err.message, true); }
+  finally { converterSaving = false; $('#converter-form').setAttribute('aria-busy', 'false'); $('#converter-save').disabled = false; $('#office-converter').disabled = false; }
+});
 async function loadAdmin() {
   const results = await Promise.allSettled([api('/system'), api('/users'), api('/events'), loadPrinters()]);
   for (const r of results) if (r.status === 'rejected') toast(r.reason.message, true);
   if (results[0].status === 'fulfilled') {
     const sys = results[0].value; $('#diagnostics').replaceChildren(); $('#retention').textContent = sys.retentionDays;
-    for (const [label, ok, yes, no] of [['Windows 打印支持', sys.windows, '可用', '当前系统不支持'], ['Word / Excel 转换', sys.libreOffice, '可用', '未安装 LibreOffice'], ['PDF 打印组件', sys.sumatra, '可用', '未安装 SumatraPDF'], ['实机打印', sys.printingEnabled, '已开启', '已关闭']]) $('#diagnostics').append(text('span', `${ok ? '●' : '○'} ${label}：${ok ? yes : no}`, ok ? 'good' : 'bad'));
+    for (const [label, ok, yes, no] of [['Windows 打印支持', sys.windows, '可用', '当前系统不支持'], ['PDF 打印组件', sys.sumatra, '可用', '没找到 SumatraPDF'], ['实机打印', sys.printingEnabled, '已开启', '已关闭']]) $('#diagnostics').append(text('span', `${ok ? '●' : '○'} ${label}：${ok ? yes : no}`, ok ? 'good' : 'bad'));
+    showConversion(sys.conversion);
     if (sys.printerError) $('#diagnostics').append(text('p', sys.printerError, 'error'));
-  }
+  } else $('#converter-status').textContent = '暂时没能读取转换设置，请点击“刷新状态”再试一次。';
   $('#printer-list').replaceChildren();
   if (!state.printers.length) $('#printer-list').append(text('p', '还没找到可共享的打印机。请先在服务电脑上安装驱动，确认能正常打印后，再刷新看看。', 'muted'));
   for (const p of state.printers) {

@@ -41,6 +41,7 @@ try {
     $settings = Get-Content -LiteralPath (Join-Path $stage 'appsettings.json') -Raw | ConvertFrom-Json
     $settings.Storage.Path = 'data'
     $settings.Printing.Enabled = $false
+    $settings.Printing.OfficeConverter = 'libreoffice'
     $settings.Printing.SumatraPath = ''
     $settings.Printing.LibreOfficePath = ''
     $settings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $stage 'appsettings.json') -Encoding utf8
@@ -48,6 +49,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $projectRoot 'MIGRATION.md') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD-PARTY.md') -Destination $stage
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'docs') -Destination $stage -Recurse -Force
     if (-not $LibreOfficeDirectory) { $LibreOfficeDirectory = Join-Path $projectRoot 'tools\LibreOffice' }
     if (-not $SumatraDirectory) { $SumatraDirectory = Join-Path $projectRoot 'tools\SumatraPDF' }
     foreach ($entry in @(@($LibreOfficeDirectory, 'LibreOffice'), @($SumatraDirectory, 'SumatraPDF'))) {
@@ -82,6 +84,7 @@ try {
         package = $packageId; runtime = 'win-x64'; selfContained = $true
         desktop = $true; configurablePort = $true
         runtimeFolder = 'dll'; languageFolder = 'lang'; tray = $true; desktopPrintingSwitch = $true
+        officeConversionProviders = @('libreoffice', 'microsoft-office')
         includesData = [bool]$IncludeData
         sumatra = (Test-Path -LiteralPath (Join-Path $stage 'tools\SumatraPDF\SumatraPDF.exe'))
         libreOffice = (Test-Path -LiteralPath (Join-Path $stage 'tools\LibreOffice\program\soffice.exe'))

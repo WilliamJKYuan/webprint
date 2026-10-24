@@ -29,13 +29,14 @@ dotnet build --no-restore
 ## 配置打印和 Office 转换
 
 1. 在服务器安装打印机驱动，并用运行 WebPrint 的同一账户确认能够访问目标打印机。共享打印机的 Windows 凭据和驱动访问也由这个账户承担。
-2. 从 [LibreOffice 官方网站](https://www.libreoffice.org/download/) 安装 LibreOffice，用于 Word/Excel 转 PDF。
+2. 安装 LibreOffice 或桌面版 Microsoft Word / Excel，用于 Word/Excel 转 PDF。在网页“系统管理 → Word / Excel 转换”选择软件并保存。
 3. 从 [SumatraPDF 官方网站](https://www.sumatrapdfreader.org/download-free-pdf-viewer) 安装或解压便携版，用于无人值守 PDF 打印。
 4. 在 `appsettings.json` 配置实际程序路径，然后重启：
 
 ```json
 "Printing": {
   "Enabled": true,
+  "OfficeConverter": "libreoffice",
   "LibreOfficePath": "C:\\Program Files\\LibreOffice\\program\\soffice.exe",
   "SumatraPath": "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe"
 }
@@ -44,9 +45,17 @@ dotnet build --no-restore
 5. 在桌面勾选“实机打印”，管理员登录网页“系统管理”，确认组件就绪并启用要共享的打印机。桌面保存值优先于基础配置，并可在运行中应用；关闭它不取消设备已接收的任务。
 6. 创建普通用户账户；先使用一页测试文件验收，再使用真实文档。
 
-实机打印默认关闭。未开启时，任务会明确记录“提交前失败”，不会虚构成功。PDF 和图片预览不依赖上述两个外部程序；Office 文件缺少 LibreOffice 时会明确提示。
+实机打印默认关闭。未开启时，任务会明确记录“发送失败”，不会虚构成功。PDF 和图片预览不依赖上述外部程序；Word/Excel 缺少所选软件时会明确提示，不自动回退到其他软件。
 
 可以通过环境变量覆盖配置，例如 `Printing__Enabled`、`Printing__SumatraPath`、`Printing__LibreOfficePath`、`Storage__Path`、`Storage__RetentionDays`。存储和组件相对路径基于程序内容目录解析。组件路径留空时优先检测程序旁的 `tools/`，再检测本机常规安装目录。
+
+`Printing.OfficeConverter`（环境变量 `Printing__OfficeConverter`）可设为 `libreoffice` 或 `microsoft-office`，默认为前者。管理员网页保存后，数据库 `settings.office_converter` 优先；保留数据目录即可保留选择。`GET/POST /api/conversion` 均限管理员，POST 需要 `X-WebPrint: 1`，设置与审计事件在同一事务提交。
+
+Microsoft Office 转换使用单独的 `WebPrint.exe --office-convert` 工作进程，在 STA 线程中通过本机 COM 调用 Word/Excel 导出 PDF。父进程限制 90 秒，工作进程另有 95 秒看门狗；异常清理只针对本次新建且 PID、创建时间、程序名称一致的实例，绝不按进程名批量终止 Office。创建 COM 对象阶段尚未识别出实例时，不会猜测并结束未知进程。
+
+只读打开上传文件，不保存原文件，禁用本次实例的 VBA 宏并抑制常见弹窗；Excel 保留工作簿打印区域、不主动更新工作簿链接，Word 在关闭实例前还原临时修改的链接设置。这些措施不构成沙箱，也不保证阻断旧式宏、加载项和所有外部数据连接。请只在受控环境处理受信任文件。Office 检测表示 COM 注册存在，不代表已完成激活或实际转换一定成功。
+
+微软不建议或支持在无人值守、非交互式服务器中自动化桌面 Office，见[官方说明](https://learn.microsoft.com/en-us/office/client-developer/integration/considerations-unattended-automation-office-microsoft-365-for-unattended-rpa)。本功能面向保持登录的桌面用户环境；需先手动打开 Word 和 Excel 完成激活与首次设置。导出接口参考 [Word](https://learn.microsoft.com/en-us/office/vba/api/word.document.exportasfixedformat) 和 [Excel](https://learn.microsoft.com/en-us/office/vba/api/excel.workbook.exportasfixedformat)。
 
 ## 审计口径
 
@@ -103,6 +112,8 @@ node --check wwwroot/app.js
 `python tests/desktop_smoke.py` 验证最终发布包中的 Windows 桌面界面：实际点击启动和停止，检查自定义端口、端口冲突、正常退出及重启后设置保留。测试使用独立数据，不出纸；截图对初始密码作脱敏处理。
 
 `python tests/password_display_smoke.py` 验证 6 字符密码、重启显示当前 admin 密码、改密后的同步、旧数据库登录后升级、加密副本损坏后的恢复，以及 HTTP 响应不泄露密码。测试日志包含临时凭据，只供本地排查，不能随发布包分发。
+
+已安装桌面 Word 和 Excel 的电脑可运行真实 Office 转换测试。先运行 `python -m pip install --target .test-tools openpyxl==3.1.5 xlwt==1.3.0`，再运行 `python -X utf8 tests/office_smoke.py`。这些库只生成测试工作簿，不是应用依赖。测试包含 DOCX、XLSX、XLS 实际 PDF 页数、Excel 打印区域、管理员切换权限、重启保留和旧预览稳定性，不发送打印任务。使用 `--package dist/具体包名.zip` 可验证便携 EXE 及其子转换进程不依赖本机 .NET。
 
 实机验收应包含：PDF、Word 和 Excel 的中文字体/分页，一页和奇数页文档，多份双面、黑白/彩色，缺纸/离线/取消及重启期间结果核查。设备计数未验证前，统计必须继续区分计划量与人工核查量。
 

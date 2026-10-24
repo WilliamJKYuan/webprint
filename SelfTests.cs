@@ -43,6 +43,13 @@ static class SelfTests {
         var portableCfg=new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>{{"WebPrint:AppRoot",root},{"Printing:SumatraPath","tools/SumatraPDF/SumatraPDF.exe"}}).Build();
         var portableEngine=new PrintEngine(db,portableCfg,NullLogger<PrintEngine>.Instance);
         Check(portableEngine.Sumatra==Path.GetFullPath(Path.Combine(root,"tools","SumatraPDF","SumatraPDF.exe")),"组件相对路径基于程序目录解析");
+        Check(engine.OfficeConverter == "libreoffice", "旧配置默认继续使用 LibreOffice");
+        db.SetOfficeConverter("microsoft-office", "admin", null);
+        Check(new Store(root).OfficeConverter() == "microsoft-office", "转换设置持久化到数据目录");
+        Reject(() => db.SetOfficeConverter("invalid", "admin", null), "拒绝不支持的转换软件");
+        Check(engine.OfficeConverter == "microsoft-office", "无效设置不会改变当前转换软件");
+        db.CheckMachine("another-host");
+        Check(db.OfficeConverter() == "microsoft-office", "迁移保留文档转换软件选择");
         Console.WriteLine($"{checks} checks passed. Test artifacts: {root}");
     }
 }

@@ -13,7 +13,9 @@
 5. 确认打印机可以正常使用后，在桌面勾选“实机打印”。新发布包默认关闭这个选项。
 6. 其他电脑用浏览器访问桌面显示的局域网地址。Windows 防火墙需要允许对应端口，程序不会自动修改防火墙。
 
-**Word / Excel 需要另外安装 LibreOffice。** 当前便携包包含 SumatraPDF，不包含 LibreOffice，也尚未接入 Microsoft Office。PDF 和图片预览无需安装 LibreOffice。
+**Word / Excel 可使用 LibreOffice 或桌面版 Microsoft Office。** 在服务电脑安装相应软件后，以管理员登录网页，进入“系统管理 → Word / Excel 转换”，选择软件并点击“保存选择”。立即用于之后上传的文件，已有预览不会改变，重启和迁移后保留选择。PDF 和图片预览不依赖这两种软件。
+
+当前便携包包含 SumatraPDF，不捆绑 LibreOffice 或 Microsoft Office。选择 Microsoft Office 时，请先在服务电脑打开 Word 和 Excel 完成激活、登录及首次设置，并保持 Windows 用户登录。Office 自动化可能遇到弹窗或卡住；转换设有 90 秒超时，不会自动改用其他软件。适合受控、有人管理的局域网电脑；微软不推荐将桌面 Office 用于无人值守的非交互式服务器自动化，见[微软说明](https://learn.microsoft.com/en-us/office/client-developer/integration/considerations-unattended-automation-office-microsoft-365-for-unattended-rpa)。
 
 发布包的 SHA-256 校验文件与 ZIP 一起提供。在 PowerShell 运行 `Get-FileHash .\下载的文件.zip -Algorithm SHA256`，与校验文件中的值核对。
 

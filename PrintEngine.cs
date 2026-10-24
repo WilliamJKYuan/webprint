@@ -21,11 +21,16 @@ class PrintEngine(Store db, IConfiguration config, ILogger<PrintEngine> logger) 
     public string Sumatra => ToolPath("Printing:SumatraPath", "tools/SumatraPDF/SumatraPDF.exe",
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "SumatraPDF", "SumatraPDF.exe"));
     public bool PrintingEnabled => config.GetValue<bool>("Printing:Enabled");
+    public string OfficeConverter => db.OfficeConverter() ?? config["Printing:OfficeConverter"] ?? "libreoffice";
+    public object ConversionStatus() => new {
+        provider = OfficeConverter, libreOffice = File.Exists(LibreOffice),
+        microsoftWord = MicrosoftOfficeWorker.IsInstalled("Word.Application"), microsoftExcel = MicrosoftOfficeWorker.IsInstalled("Excel.Application")
+    };
     public async Task<object> Diagnostics() {
         string? error = null; var count = 0;
         try { count = (await Printers()).Count; } catch (AppError e) { error = e.Message; }
         return new { windows = OperatingSystem.IsWindows(), libreOffice = File.Exists(LibreOffice), sumatra = File.Exists(Sumatra),
-            printingEnabled = PrintingEnabled, printers = count, printerError = error, retentionDays = config.GetValue("Storage:RetentionDays", 30) };
+            printingEnabled = PrintingEnabled, printers = count, printerError = error, retentionDays = config.GetValue("Storage:RetentionDays", 30), conversion = ConversionStatus() };
     }
     public async Task<List<PrinterInfo>> Printers() {
         if (!OperatingSystem.IsWindows()) throw new AppError("当前打印后端需要 Windows。");
@@ -69,6 +74,7 @@ class PrintEngine(Store db, IConfiguration config, ILogger<PrintEngine> logger) 
         if(name.Length>200||string.IsNullOrWhiteSpace(name))throw new AppError("文件名无效或过长。");
         var ext=Path.GetExtension(name).ToLowerInvariant();
         if(!new[]{".pdf",".doc",".docx",".xls",".xlsx",".jpg",".jpeg",".png"}.Contains(ext))throw new AppError("支持 PDF、Word、Excel、JPG 和 PNG 文件。");
+        var converter = OfficeConverter; // One provider per upload, including time waiting for conversion.
         var id=Guid.NewGuid().ToString("N");var dir=db.DocumentDir(id);Directory.CreateDirectory(dir);
         var source=Path.Combine(dir,"source"+ext);var pdf=db.PdfPath(id);
         try {
@@ -91,25 +97,29 @@ class PrintEngine(Store db, IConfiguration config, ILogger<PrintEngine> logger) 
                     }
                     doc.Save(pdf);
                 } else {
-                    if(!File.Exists(LibreOffice))throw new AppError("服务器尚未配置 LibreOffice，暂不能转换 Word/Excel。请先上传 PDF，或由管理员完成配置。",503);
-                    var profile=Path.Combine(dir,"lo-profile");Directory.CreateDirectory(Path.Combine(profile,"user"));
-                    await File.WriteAllTextAsync(Path.Combine(profile,"user","registrymodifications.xcu"), """
-                        <?xml version="1.0" encoding="UTF-8"?>
-                        <oor:items xmlns:oor="http://openoffice.org/2001/registry">
-                        <item oor:path="/org.openoffice.Office.Common/Security/Scripting"><prop oor:name="MacroSecurityLevel" oor:op="fuse"><value>3</value></prop></item>
-                        <item oor:path="/org.openoffice.Office.Calc/Content/Update"><prop oor:name="Link" oor:op="fuse"><value>2</value></prop></item>
-                        <item oor:path="/org.openoffice.Office.Writer/Content/Update"><prop oor:name="Link" oor:op="fuse"><value>2</value></prop></item>
-                        </oor:items>
-                        """,ct);
-                    var result=await Run(LibreOffice,new[]{"-env:UserInstallation="+new Uri(profile+Path.DirectorySeparatorChar).AbsoluteUri,"--headless","--nologo","--nodefault","--nofirststartwizard","--convert-to","pdf","--outdir",dir,source},90,ct);
                     var converted=Path.Combine(dir,"source.pdf");
-                    if(result.Code!=0||!File.Exists(converted))throw new AppError("Office 转换失败；文件可能损坏、加密或不受支持。可先另存为 PDF 后上传。");
+                    if (converter == "microsoft-office") {
+                        await MicrosoftOfficeConversion.Convert(source, converted, logger, ct);
+                    } else if (converter == "libreoffice") {
+                        if(!File.Exists(LibreOffice))throw new AppError("服务器尚未配置 LibreOffice，暂不能转换 Word/Excel。请先上传 PDF，或由管理员完成配置。",503);
+                        var profile=Path.Combine(dir,"lo-profile");Directory.CreateDirectory(Path.Combine(profile,"user"));
+                        await File.WriteAllTextAsync(Path.Combine(profile,"user","registrymodifications.xcu"), """
+                            <?xml version="1.0" encoding="UTF-8"?>
+                            <oor:items xmlns:oor="http://openoffice.org/2001/registry">
+                            <item oor:path="/org.openoffice.Office.Common/Security/Scripting"><prop oor:name="MacroSecurityLevel" oor:op="fuse"><value>3</value></prop></item>
+                            <item oor:path="/org.openoffice.Office.Calc/Content/Update"><prop oor:name="Link" oor:op="fuse"><value>2</value></prop></item>
+                            <item oor:path="/org.openoffice.Office.Writer/Content/Update"><prop oor:name="Link" oor:op="fuse"><value>2</value></prop></item>
+                            </oor:items>
+                            """,ct);
+                        var result=await Run(LibreOffice,new[]{"-env:UserInstallation="+new Uri(profile+Path.DirectorySeparatorChar).AbsoluteUri,"--headless","--nologo","--nodefault","--nofirststartwizard","--convert-to","pdf","--outdir",dir,source},90,ct);
+                        if(result.Code!=0||!File.Exists(converted))throw new AppError("Office 转换失败；文件可能损坏、加密或不受支持。可先另存为 PDF 后上传。");
+                        Directory.Delete(profile,true);
+                    } else throw new AppError("文档转换方式无效，请管理员在系统管理中重新选择。", 503);
                     using(var src=PdfReader.Open(converted,PdfDocumentOpenMode.Import)) {
                         if(src.PageCount<1||src.PageCount>2000)throw new AppError("文档须为 1～2000 页。");
                         using var clean=new PdfDocument();foreach(var p in src.Pages)clean.AddPage(p);clean.Save(pdf);
                     }
                     File.Delete(converted);
-                    Directory.Delete(profile,true);
                 }
                 int count;using(var parsed=PdfReader.Open(pdf,PdfDocumentOpenMode.Import))count=parsed.PageCount;
                 using var input=File.OpenRead(source);var hash=Convert.ToHexString(await SHA256.HashDataAsync(input,ct));
