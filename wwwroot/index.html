@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WebPrint · 本地打印工作台</title><link rel="stylesheet" href="/app.css"><script defer src="/app.js"></script></head>
+<body>
+<svg class="icon-library" aria-hidden="true"><defs>
+ <symbol id="mark" viewBox="0 0 28 28"><path d="M8 4H21L25 8V24H8Z"/><path d="M21 4V9H25M4 8H3V26H19M12 14H21M12 18H19"/></symbol>
+ <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5V19M5 12H19"/></symbol>
+ <symbol id="i-jobs" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8H15M9 12H15M9 16H12"/></symbol>
+ <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7H20M4 17H20M8 4V10M16 14V20"/></symbol>
+ <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3M7 8L12 3L17 8M4 15V21H20V15"/></symbol>
+ <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12H20M14 6L20 12L14 18"/></symbol>
+ <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21V19A8 8 0 0 1 20 19V21"/></symbol>
+</defs></svg>
+<div id="toast" role="status" hidden></div>
+<section id="login" class="login-shell">
+ <div class="login-intro">
+  <a class="brand" href="/"><svg class="brand-symbol" aria-hidden="true"><use href="#mark"/></svg><span>WebPrint</span></a>
+  <div class="login-description"><h1 id="login-title">本地打印，<br>从容有序。</h1><p class="login-lead">在浏览器上传文件、发起打印，<br>也能随时查看打印记录。</p>
+   <dl class="login-process"><div><dt>上传文件</dt><dd>PDF、Word、Excel 和图片</dd></div><div><dt>确认预览</dt><dd>先看看内容和分页有没有问题</dd></div><div><dt>查看记录</dt><dd>查看打印进度和页数</dd></div></dl>
+  </div><p class="login-footnote">文件只在本地处理，其他电脑无需安装打印驱动。</p>
+ </div>
+ <form id="login-form" class="login-card"><h2>登录工作台</h2><p class="muted">用管理员给你的账号登录。</p><label for="login-username">用户名</label><input id="login-username" name="username" autocomplete="username" required placeholder="输入用户名"><label for="login-password">密码</label><input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="200" required placeholder="输入密码"><button class="primary" type="submit">登录<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button><p id="login-error" class="error" role="alert"></p><p class="login-help">admin 的密码可以在服务电脑的运行日志里查看。</p></form>
+</section>
+<div id="workspace" hidden>
+ <aside class="sidebar" aria-label="工作区导航">
+  <a class="brand" href="/"><svg class="brand-symbol" aria-hidden="true"><use href="#mark"/></svg><span>WebPrint</span></a>
+  <div class="workspace-scope"><span class="connection-dot"></span>本地打印工作区</div>
+  <button id="mobile-account" class="icon-button" aria-label="账户菜单" aria-expanded="false" aria-controls="account-menu"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg></button>
+  <nav aria-label="主要功能"><button data-tab="print" class="active" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>新建打印</span></button><button data-tab="jobs"><svg class="icon" aria-hidden="true"><use href="#i-jobs"/></svg><span>打印记录</span></button><button data-tab="admin" class="admin-only"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span>系统管理</span></button></nav>
+  <div class="aside-bottom" id="account-menu"><p class="storage-note">上传的文件保留 <span id="retention">30</span> 天<br><span>到期会删除文件，打印记录仍会保留</span></p><button id="password-open" class="text-button">修改密码</button><button id="logout" class="text-button">退出登录</button></div>
+ </aside>
+ <main id="main-content">
+  <header class="page-header"><div><h2 id="page-title">新建打印</h2><p id="page-description" class="muted">先选文件、看看预览，再设置打印机和份数。</p></div><span class="user-chip" id="identity"></span></header>
+  <section id="tab-print" class="tab-panel" aria-labelledby="page-title">
+   <div class="print-grid">
+    <div class="document-column">
+     <article class="card upload-card"><div class="section-title"><h2>文件</h2><span class="meta">单个文件最大 50 MB</span></div><label id="dropzone" class="dropzone"><input id="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"><svg class="upload-icon" aria-hidden="true"><use href="#i-upload"/></svg><span><strong>选择文件，或拖放到这里</strong><span class="format-list">PDF、Word、Excel、JPG、PNG</span></span><span class="choose-file">选择文件</span></label><div id="file-info" hidden><div><strong id="file-name"></strong><p class="muted" id="file-meta"></p></div><a id="preview-link" target="_blank" rel="noopener">打开预览</a></div><p id="upload-progress" class="upload-status" role="status"></p></article>
+     <article class="card preview-card"><div class="section-title"><h2>打印预览</h2><span class="meta">打印内容以这里的预览为准</span></div><div id="preview-empty" class="preview-empty"><span class="paper-proof" aria-hidden="true"></span><div class="empty-title">上传文件，开始预览</div><p>文件上传后，会在这里显示预览。</p><dl class="preview-guide"><div><dt>PDF</dt><dd>保留原有页面</dd></div><div><dt>Word / Excel</dt><dd>转换成 PDF 后预览</dd></div><div><dt>图片</dt><dd>按原比例缩放到 A4</dd></div></dl></div><iframe id="preview" title="文件打印预览" hidden></iframe><p class="preview-note">Word / Excel 转换后，字体和分页可能有变化。Excel 请检查打印区域。</p></article>
+    </div>
+    <article class="card settings-card"><div class="section-title"><h2>打印设置</h2><span class="meta">A4</span></div><form id="print-form"><label for="printer">选择打印机</label><select id="printer" required><option value="">正在读取打印机…</option></select><p class="field-help" id="printer-message" role="status"></p><div class="field-group"><label for="pages">打印哪些页</label><input id="pages" placeholder="全部页面，或填 1-3,5" maxlength="8000"><p class="field-help">按页码顺序打印，重复填写的页码只打一次。</p></div><div class="two-cols"><div><label for="copies">份数</label><input id="copies" type="number" min="1" max="100" value="1" required></div><div><label for="color">颜色</label><select id="color"><option value="false">黑白</option><option value="true">彩色</option></select></div></div><label for="duplex">单双面</label><select id="duplex"><option value="simplex">单面打印</option><option value="duplex">双面 · 长边翻转</option><option value="duplexshort">双面 · 短边翻转</option></select><p class="field-help">文件会缩放到 A4 纸张。彩色、双面需要打印机支持。</p><div class="estimate"><span>这次预计打印</span><strong id="estimate-pages">还没选择文件</strong><small id="estimate-sheets">选好文件后，这里会显示预计用纸量</small></div><label class="check"><input id="confirmed" type="checkbox" required><span>我已确认预览和打印设置</span></label><button id="submit-print" class="primary" disabled>开始打印<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button><p id="submit-help" class="field-help">先选一份文件，再选择打印机。</p></form></article>
+   </div>
+  </section>
+  <section id="tab-jobs" class="tab-panel" aria-labelledby="page-title" hidden>
+   <div class="metrics" aria-label="当前筛选范围统计"><article><span>打印记录</span><strong id="metric-jobs">0</strong></article><article><span>预计打印页数</span><strong id="metric-pages">0</strong></article><article><span>已确认打印页数</span><strong id="metric-actual">0</strong></article><article><span>等待确认的记录</span><strong id="metric-pending">0</strong></article></div>
+   <article class="card audit-card"><div class="toolbar"><h2>打印明细</h2><div class="toolbar-actions"><span id="job-count" class="meta">共 0 条记录</span><button id="refresh-jobs">刷新</button><a class="button admin-only" href="/api/reports.csv">导出 CSV</a></div></div><div class="filters"><input id="search" aria-label="搜索打印记录" placeholder="搜索文件、用户或打印机"><select id="status-filter" aria-label="打印状态"><option value="">所有状态</option><option value="queued">等待打印</option><option value="dispatching">正在发送</option><option value="submitted_unverified">已发送，待确认</option><option value="unknown">结果待确认</option><option value="failed">发送失败</option><option value="cancelled">已取消</option><option value="reviewed">已核对</option></select><details class="date-filter"><summary>日期范围</summary><div><label for="date-from">开始日期</label><input id="date-from" type="date"><label for="date-to">结束日期</label><input id="date-to" type="date"></div></details></div><div class="table-scroll"><table class="jobs-table"><thead><tr><th>文件 / 用户</th><th>打印机 / 时间</th><th class="num">预计页数 / 用纸</th><th>打印状态</th><th class="num">实际打印页数</th><th>操作</th></tr></thead><tbody id="job-rows"></tbody></table></div><div id="jobs-empty" class="empty" hidden><strong>还没有打印记录</strong><p>打印后，可以在这里查看进度和页数。</p><button type="button" id="empty-new-print">新建打印</button></div><p class="table-note">预计页数不包含失败或取消的记录。实际页数由管理员核对后填写，没填表示还未确认。导出 CSV 会包含全部记录。</p></article>
+  </section>
+  <section id="tab-admin" class="tab-panel" aria-labelledby="page-title" hidden>
+   <article class="settings-section"><div class="settings-description"><h2>打印服务状态</h2><p>看看打印和文件转换功能是否可用。缺少组件时，这里会告诉你。</p><button id="refresh-admin">刷新状态</button></div><div class="settings-panel"><div id="diagnostics" class="diagnostics"></div><p class="field-help">要开启或关闭实机打印，请到桌面程序里勾选“实机打印”。文件转换程序的路径在服务器配置中修改。</p></div></article>
+   <article class="settings-section"><div class="settings-description"><h2>共享打印机</h2><p>打开开关后，大家就能在网页里选择这台打印机。</p></div><div class="settings-panel" id="printer-list"></div></article>
+   <article class="settings-section"><div class="settings-description"><h2>账户管理</h2><p>给需要打印的人创建账号。普通用户只能查看自己的文件和打印记录。</p><div id="user-list" class="user-list"></div></div><div class="settings-panel"><form id="user-form"><div class="two-cols"><div><label for="new-username">用户名</label><input id="new-username" name="username" minlength="3" maxlength="40" pattern="[a-zA-Z0-9_.\-]+" required autocomplete="off"></div><div><label for="new-role">角色</label><select id="new-role" name="role"><option value="user">普通用户</option><option value="admin">管理员</option></select></div></div><label for="new-password">初始密码</label><input id="new-password" name="password" type="password" minlength="6" maxlength="200" autocomplete="new-password" required><p class="field-help">6～200 个字符，不必混合字母、数字和符号。</p><div class="form-actions"><button class="primary">创建账户</button></div></form></div></article>
+   <article class="card event-card"><div class="section-title"><h2>操作日志</h2><span class="meta">显示最近 1000 条，较早的记录仍会保留</span></div><div class="table-scroll"><table><thead><tr><th>时间</th><th>操作人</th><th>事件</th><th>详情</th></tr></thead><tbody id="event-rows"></tbody></table></div></article>
+  </section>
+  <footer><span>WebPrint · 本地打印与记录</span><span>发送成功后，请到打印机旁确认是否打完。</span></footer>
+ </main>
+</div>
+<dialog id="password-dialog"><form id="password-form"><h2>修改密码</h2><p class="muted">新密码至少 6 个字符。</p><label for="current-password">当前密码</label><input id="current-password" name="current" type="password" autocomplete="current-password" required><label for="changed-password">新密码</label><input id="changed-password" name="password" type="password" minlength="6" maxlength="200" autocomplete="new-password" required><div class="dialog-actions"><button type="button" id="password-close">取消</button><button class="primary">保存密码</button></div></form></dialog>
+<dialog id="review-dialog"><form id="review-form"><h2>登记打印结果</h2><p class="muted">请先到打印机旁核对，再填写实际打印的页数和备注。</p><label for="actual-pages">实际打印了多少页</label><input id="actual-pages" name="actualPages" type="number" min="0" placeholder="还不确定就先留空"><label for="review-note">备注</label><textarea id="review-note" name="note" maxlength="1000" required placeholder="例如：已核对，共打印 6 页；有一页卡纸。"></textarea><div class="dialog-actions"><button type="button" id="review-close">取消</button><button class="primary">保存结果</button></div></form></dialog>
+<noscript>请在浏览器中启用 JavaScript，才能登录和打印文件。</noscript>
+</body></html>

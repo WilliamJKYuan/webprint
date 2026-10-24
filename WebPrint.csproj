@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Launcher/**;BuildTools/**;dist/**;artifacts/**;publish/**;data/**;tools/**;.test-tools/**;.test-artifacts/**;.taste-skill/**;launcher.json;appsettings.Local.json</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
+    <PackageReference Include="PDFsharp" Version="6.2.0" />
+  </ItemGroup>
+</Project>

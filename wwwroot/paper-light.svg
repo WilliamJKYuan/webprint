@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" fill="none">
+  <!-- Original paper study for WebPrint. Ambient material, no remote assets. -->
+  <defs>
+    <linearGradient id="paper" x1="950" y1="40" x2="1440" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/><stop offset="1" stop-color="#e7e4de"/>
+    </linearGradient>
+    <linearGradient id="light" x1="500" y1="0" x2="1250" y2="850" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="-60%" y="-60%" width="230%" height="230%"><feGaussianBlur stdDeviation="24"/></filter>
+    <filter id="shadow" x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="-20" dy="32" stdDeviation="24" flood-color="#51483a" flood-opacity=".12"/></filter>
+  </defs>
+  <path d="M1140 -160L1730 130L1130 1220L540 930Z" fill="#bdb7ad" opacity=".12" filter="url(#soft)"/>
+  <path d="M1060 -180L1660 100L1100 1110L500 830Z" fill="url(#paper)" filter="url(#shadow)"/>
+  <path d="M1440 -190L1780 -20L1280 950L940 780Z" fill="#fff" opacity=".52"/>
+  <path d="M610 -240L850 -120L250 1110L10 990Z" fill="url(#light)"/>
+  <path d="M910 -230L960 -205L360 1030L310 1005Z" fill="#c7c1b7" opacity=".09" filter="url(#soft)"/>
+</svg>
