@@ -31,15 +31,23 @@
   --glass: #fff;
   --glass-edge: #fff;
   --float-shadow: 0 16px 48px #332c2014;
+  --motion-fast: 160ms;
+  --motion-page: 240ms;
+  --motion-nav: 320ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--ground) url('/paper-light.svg') right top / 1600px 1100px no-repeat fixed; color: var(--text); font: var(--fs-body)/1.55 var(--font); -webkit-font-smoothing: antialiased; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button, a, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
-button, .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap; font-weight: 500; transition: background-color .16s, border-color .16s, box-shadow .16s; }
+button, .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap; font-weight: 500; transition: background-color var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast) var(--ease-out); touch-action: manipulation; }
 button:hover, .button:hover { background: var(--raised); border-color: var(--control); text-decoration: none; }
-button:active, .button:active { transform: translateY(1px); }
+button:not(:disabled):active, .button:active { transform: translateY(1px) scale(.98); }
+.primary .icon { transition: transform var(--motion-fast) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .primary:not(:disabled):hover .icon { transform: translateX(3px); }
+}
 button:disabled { cursor: not-allowed; background: var(--raised); border-color: var(--border); color: var(--muted); }
 .primary { background: var(--primary); border-color: var(--primary); color: #fff; }
 .primary:hover { background: var(--accent); border-color: var(--accent); }
@@ -73,9 +81,15 @@ p { line-height: 1.65; }
 .sidebar { position: fixed; inset: 16px auto 16px 16px; z-index: 10; width: calc(var(--sidebar-width) - 16px); padding: 24px 16px; display: flex; flex-direction: column; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 24px; }
 .sidebar > .brand { margin-left: 10px; }
 .workspace-scope { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; margin: 22px 10px 30px; }
-.sidebar nav { display: grid; gap: 6px; }
-.sidebar nav button { min-height: 44px; justify-content: flex-start; gap: 12px; border: 0; background: transparent; font-weight: 400; padding: 11px 14px; color: var(--muted); }
+.sidebar nav { position: relative; isolation: isolate; display: grid; gap: 6px; }
+.sidebar nav::before { content: ""; position: absolute; pointer-events: none; left: 0; top: 0; width: var(--nav-width, 0px); height: var(--nav-height, 0px); transform: translate(var(--nav-x, 0px), var(--nav-y, 0px)); border-radius: 999px; background: var(--text); opacity: 0; }
+.sidebar nav.indicator-ready::before { opacity: 1; }
+.sidebar nav.indicator-animated::before { transition: transform var(--motion-nav) var(--ease-out), width var(--motion-nav) var(--ease-out), height var(--motion-nav) var(--ease-out); }
+.sidebar nav button { position: relative; z-index: 1; min-height: 44px; justify-content: flex-start; gap: 12px; border: 0; background: transparent; font-weight: 400; padding: 11px 14px; color: var(--muted); }
 .sidebar nav button.active { background: var(--text); color: #fff; font-weight: 500; }
+.sidebar nav.indicator-ready button.active { background: transparent; }
+.sidebar nav button .icon { transition: transform var(--motion-page) var(--ease-out); }
+.sidebar nav button.active .icon { transform: scale(1.08); }
 .sidebar nav button:not(.active):hover { color: var(--text); background: var(--active); }
 .aside-bottom { margin-top: auto; padding: 20px 10px 0; }
 .storage-note { font-size: 13px; color: var(--muted); line-height: 1.9; margin-bottom: 20px; }
@@ -158,6 +172,7 @@ main { margin-left: var(--sidebar-width); padding: 36px; min-height: 100vh; }
 .date-filter > summary::-webkit-details-marker { display: none; }
 .date-filter[open] > summary { border-color: var(--text); }
 .date-filter > div { position: absolute; top: calc(100% + 10px); right: 0; z-index: 12; width: 260px; padding: 20px; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: var(--radius-card); box-shadow: var(--float-shadow); }
+.date-filter[open] > div { animation: surface-enter var(--motion-fast) var(--ease-out); }
 .date-filter label:first-child { margin-top: 0; }
 .table-scroll { overflow-x: auto; max-width: 100%; scrollbar-width: thin; }
 table { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 13px; text-align: left; }
@@ -233,11 +248,33 @@ footer { display: flex; justify-content: space-between; gap: 12px; font-size: 12
 .login-card .error:empty { display: none; }
 dialog { width: 440px; max-width: calc(100vw - 32px); border: 1px solid var(--glass-edge); border-radius: 24px; padding: 32px; background: var(--glass); color: var(--text); box-shadow: var(--float-shadow); }
 dialog::backdrop { background: #29251f52; }
+/* Entry is supported everywhere; modern browsers also keep the modal in the
+   top layer for its closing transition. Native focus and Escape behavior stay intact. */
+dialog[open] { animation: surface-enter var(--motion-page) var(--ease-out); }
+@supports (transition-behavior: allow-discrete) {
+  dialog { opacity: 0; transform: translateY(8px) scale(.99); transition: opacity var(--motion-fast), transform var(--motion-fast) var(--ease-out), display var(--motion-fast) allow-discrete, overlay var(--motion-fast) allow-discrete; }
+  dialog[open] { opacity: 1; transform: none; animation: none; }
+  dialog::backdrop { opacity: 0; transition: opacity var(--motion-fast), display var(--motion-fast) allow-discrete, overlay var(--motion-fast) allow-discrete; }
+  dialog[open]::backdrop { opacity: 1; }
+  @starting-style {
+    dialog[open] { opacity: 0; transform: translateY(8px) scale(.99); }
+    dialog[open]::backdrop { opacity: 0; }
+  }
+}
 dialog h2 { font-size: 22px; }
 dialog .muted { font-size: 13px; margin-top: 10px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 28px; }
 #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 50; padding: 14px 20px; max-width: min(90vw, 560px); background: var(--text); color: #fff; border-radius: 16px; font-size: 13px; box-shadow: var(--float-shadow); }
 #toast.error { background: var(--negative); }
+#toast:not([hidden]) { animation: toast-enter var(--motion-page) var(--ease-out); }
+@keyframes surface-enter {
+  from { opacity: 0; transform: translateY(8px) scale(.99); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toast-enter {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
 noscript { display: block; padding: 20px; text-align: center; }
 [hidden] { display: none !important; }
 
@@ -269,7 +306,7 @@ noscript { display: block; padding: 20px; text-align: center; }
   .sidebar nav { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: min(540px, calc(100vw - 32px)); display: flex; justify-content: center; gap: 6px; padding: 8px; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 999px; box-shadow: var(--float-shadow); z-index: 11; }
   .sidebar nav button { justify-content: center; flex: 1; font-size: 13px; min-height: 44px; padding: 10px 12px; }
   .aside-bottom { display: none; position: absolute; right: 0; top: 70px; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 20px; padding: 24px; box-shadow: var(--float-shadow); }
-  .aside-bottom.is-open { display: block; }
+  .aside-bottom.is-open { display: block; animation: surface-enter var(--motion-fast) var(--ease-out); transform-origin: top right; }
   .aside-bottom button { min-height: 44px; }
   #mobile-account { display: flex; padding: 8px; min-width: 36px; min-height: 36px; background: transparent; border-color: transparent; }
   .storage-note { margin-bottom: 14px; }
@@ -286,7 +323,10 @@ noscript { display: block; padding: 20px; text-align: center; }
   .user-chip { max-width: 220px; white-space: normal; text-align: right; }
   .event-card table { min-width: 600px; }
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--ground); }
+    /* Blur only the header's backdrop layer. A filter on the sidebar itself
+       would make the fixed bottom navigation anchor to the header. */
+    .sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: transparent; isolation: isolate; }
+    .sidebar::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit; background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(110%); backdrop-filter: blur(24px) saturate(110%); }
     .sidebar nav, .aside-bottom { -webkit-backdrop-filter: blur(22px) saturate(110%); backdrop-filter: blur(22px) saturate(110%); }
   }
 }
@@ -371,13 +411,14 @@ noscript { display: block; padding: 20px; text-align: center; }
 }
 @media (prefers-reduced-transparency: reduce) {
   :root { --glass: #fff; --glass-edge: var(--border); }
-  .sidebar, .sidebar nav, .aside-bottom, .login-card, dialog, .date-filter > div { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sidebar, .sidebar::before, .sidebar nav, .aside-bottom, .login-card, dialog, .date-filter > div { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   button:active, .button:active { transform: none; }
 }
 @media (forced-colors: active) {
   .sidebar, .sidebar nav, .aside-bottom, .login-card, dialog { border-color: CanvasText; }
   .sidebar nav button.active { border: 1px solid Highlight; color: Highlight; }
+  .sidebar nav::before { display: none; }
 }

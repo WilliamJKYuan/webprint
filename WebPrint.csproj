@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DefaultItemExcludes>$(DefaultItemExcludes);Launcher/**;BuildTools/**;dist/**;artifacts/**;publish/**;data/**;tools/**;.test-tools/**;.test-artifacts/**;.taste-skill/**;launcher.json;appsettings.Local.json</DefaultItemExcludes>

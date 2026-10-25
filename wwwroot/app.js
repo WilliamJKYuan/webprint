@@ -3,6 +3,41 @@ const $ = s => document.querySelector(s);
 const state = { me: null, doc: null, printers: [], jobs: [], requestId: null, reviewId: null, uploading: false, submitting: false };
 const statuses = { queued: '等待打印', dispatching: '正在发送', submitted_unverified: '已发送，待确认', unknown: '结果待确认', failed: '发送失败', cancelled: '已取消', reviewed: '已核对' };
 const eventNames = { login: '登录', password_changed: '修改密码', printer_changed: '修改打印机共享', user_created: '创建账户', upload: '上传文件', printing_changed: '切换实机打印', converter_changed: '切换文档转换软件', machine_changed: '部署或迁移服务', content_purged: '清理到期文件', ...statuses };
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const navigation = $('.sidebar nav');
+const transitions = new Map();
+function reveal(element, distance = 8) {
+  transitions.get(element)?.cancel();
+  if (reducedMotion.matches || !element.animate) return;
+  const animation = element.animate([
+    { opacity: .3, transform: `translateY(${distance}px)` },
+    { opacity: 1, transform: 'translateY(0)' }
+  ], { duration: 240, easing: 'cubic-bezier(.22, 1, .36, 1)' });
+  transitions.set(element, animation);
+  animation.finished.catch(() => {}).finally(() => {
+    if (transitions.get(element) === animation) transitions.delete(element);
+  });
+}
+reducedMotion.addEventListener('change', () => {
+  for (const animation of transitions.values()) animation.cancel();
+  transitions.clear();
+});
+function positionNavigation() {
+  const active = navigation.querySelector('button.active');
+  if (!active || !active.getClientRects().length) return;
+  // Local offsets stay correct while the mobile navigation itself is translated.
+  navigation.style.setProperty('--nav-x', active.offsetLeft + 'px');
+  navigation.style.setProperty('--nav-y', active.offsetTop + 'px');
+  navigation.style.setProperty('--nav-width', active.offsetWidth + 'px');
+  navigation.style.setProperty('--nav-height', active.offsetHeight + 'px');
+  navigation.classList.add('indicator-ready');
+}
+new ResizeObserver(() => {
+  // A breakpoint/role change should reposition, rather than slide from the old layout.
+  navigation.classList.remove('indicator-animated');
+  positionNavigation();
+}).observe(navigation);
+document.fonts.ready.then(positionNavigation);
 let toastTimer;
 function toast(message, error = false) { clearTimeout(toastTimer); $('#toast').textContent = message; $('#toast').className = error ? 'error' : ''; $('#toast').hidden = false; toastTimer = setTimeout(() => $('#toast').hidden = true, 6000); }
 async function api(path, method = 'GET', body) {
@@ -34,11 +69,23 @@ async function enter(me) {
 }
 function tab(name) {
   if (name === 'admin' && state.me?.role !== 'admin') return;
+  const previous = navigation.querySelector('button.active')?.dataset.tab;
+  const changed = previous !== name;
+  const focusInPanel = document.activeElement?.closest('.tab-panel');
+  if (changed && navigation.classList.contains('indicator-ready')) navigation.classList.add('indicator-animated');
+  for (const panel of document.querySelectorAll('.tab-panel')) transitions.get(panel)?.cancel();
   document.querySelectorAll('.tab-panel').forEach(el => el.hidden = el.id !== 'tab-' + name);
   document.querySelectorAll('[data-tab]').forEach(el => { el.classList.toggle('active', el.dataset.tab === name); if (el.dataset.tab === name) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current'); });
+  positionNavigation();
   $('#page-title').textContent = { print: '新建打印', jobs: state.me?.role === 'admin' ? '打印记录' : '我的打印记录', admin: '系统管理' }[name];
   $('#page-description').textContent = { print: '先选文件、看看预览，再设置打印机和份数。', jobs: state.me?.role === 'admin' ? '查看每次打印的进度和页数，也可以登记实际打印结果。' : '查看每次打印的进度和页数。', admin: '看看打印服务是否正常，设置共享打印机和使用账号。' }[name];
   closeAccountMenu();
+  if (changed) {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (focusInPanel) navigation.querySelector('button.active').focus({ preventScroll: true });
+    reveal($('#tab-' + name));
+    reveal($('.page-header'), 4);
+  }
   if (name === 'jobs') loadJobs().catch(e => toast(e.message, true));
   if (name === 'admin') loadAdmin().catch(e => toast(e.message, true));
 }
